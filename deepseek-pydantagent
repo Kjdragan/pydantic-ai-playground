@@ -1,0 +1,45 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+
+import logfire
+from pydantic import BaseModel
+from pydantic_ai.models import KnownModelName
+
+
+logfire.configure()
+
+# setup DeepSeek model
+model = OpenAIModel(
+    'deepseek-chat',
+    base_url='https://api.deepseek.com',
+    api_key=os.getenv('DEEPSEEK_API_KEY')
+)
+
+
+
+# setup pydantic-ai agent
+agent = Agent(model)
+from typing import cast
+
+
+# 'if-token-present' means nothing will be sent (and the example will work) if you don't have logfire configured
+logfire.configure(send_to_logfire='if-token-present')
+
+
+class MyModel(BaseModel):
+    city: str
+    country: str
+
+
+
+print(f'Using model: {model}')
+agent = Agent(model, result_type=MyModel)
+
+if __name__ == '__main__':
+    result = agent.run_sync('The windy city in the US of A.')
+    print(result.data)
+    print(result.usage())

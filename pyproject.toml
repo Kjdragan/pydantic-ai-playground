@@ -5,5 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic-ai[examples,logfire,openai]>=0.0.19",
+    "asyncio>=3.4.3",
+    "pydantic-ai[examples,logfire]>=0.0.19",
+    "python-dotenv>=1.0.1",
+    "sqlalchemy>=2.0.37",
 ]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# Add UV-specific configurations here, if needed.
