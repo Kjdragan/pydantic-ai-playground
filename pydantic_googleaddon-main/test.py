@@ -7,7 +7,7 @@ async def main():
     WebTool.DEBUG = True  # Enable debug logging
     
     # Example search
-    query = "J. Gravelle computer programmer"
+    query = "Ukraine war"
     print(f"\nSearching for: {query}")
     print("=" * 50)
     

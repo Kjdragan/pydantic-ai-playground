@@ -6,8 +6,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "asyncio>=3.4.3",
+    "beautifulsoup4>=4.12.3",
     "pydantic-ai[examples,logfire]",
     "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
     "sqlalchemy>=2.0.37",
 ]
 

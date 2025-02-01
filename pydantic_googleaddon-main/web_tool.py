@@ -17,13 +17,21 @@ class WebTool:
         self.num_results = num_results
         self.max_tokens = max_tokens
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,/;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Referer': 'https://www.google.com/',
             'DNT': '1',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-User': '?1',
+            'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"'
         }
         self.log_debug("WebTool initialized")
 
@@ -37,7 +45,7 @@ class WebTool:
 
     def _perform_web_search(self, query: str) -> List[Dict[str, Any]]:
         encoded_query = quote_plus(query)
-        search_url = f"https://www.google.com/search?q={encoded_query}&num={self.num_results * 2}"
+        search_url = f"https://www.google.com/search?q={encoded_query}&num={self.num_results * 2}&hl=en"
         self.log_debug(f"Search URL: {search_url}")
         
         try:
@@ -46,33 +54,60 @@ class WebTool:
             self.log_debug(f"Response status code: {response.status_code}")
             response.raise_for_status()
             
+            # Check if we got the anti-bot page
+            if 'Our systems have detected unusual traffic' in response.text:
+                self.log_debug("Anti-bot detection triggered")
+                raise Exception("Google's anti-bot detection was triggered. Please try again later or use a different approach.")
+            
             self.log_debug("Parsing HTML with BeautifulSoup")
             soup = BeautifulSoup(response.text, 'html.parser')
             
             self.log_debug("Searching for result divs")
             search_results = []
-            for g in soup.find_all('div', class_='g'):
-                self.log_debug("Processing a search result div")
-                anchor = g.find('a')
-                title = g.find('h3').text if g.find('h3') else 'No title'
-                url = anchor.get('href', 'No URL') if anchor else 'No URL'
-                
-                description = ''
-                description_div = g.find('div', class_=['VwiC3b', 'yXK7lf'])
-                if description_div:
-                    description = description_div.get_text(strip=True)
-                else:
-                    description = g.get_text(strip=True)
-                
-                self.log_debug(f"Found result: Title: {title[:30]}..., URL: {url[:30]}...")
-                search_results.append({
-                    'title': title,
-                    'description': description,
-                    'url': url
-                })
+
+            # Debug: Print the HTML structure
+            with open('debug_output.html', 'w', encoding='utf-8') as f:
+                f.write(response.text)
+            self.log_debug("Saved HTML response to debug_output.html")
+            
+            # Find all search result containers - using more specific selectors
+            main_results = soup.select('div.g')
+            
+            for result in main_results:
+                try:
+                    # Find title and URL
+                    link_elem = result.select_one('a')
+                    if not link_elem:
+                        continue
+                        
+                    url = link_elem.get('href', '')
+                    if not url or not url.startswith('http'):
+                        continue
+                    
+                    # Get title from h3
+                    title_elem = result.select_one('h3')
+                    if not title_elem:
+                        continue
+                    title = title_elem.get_text(strip=True)
+                    
+                    # Get description
+                    desc_elem = result.select_one('div.VwiC3b, div.IsZvec')
+                    description = desc_elem.get_text(strip=True) if desc_elem else ''
+                    
+                    if title and url:
+                        self.log_debug(f"Found result: Title: {title[:30]}..., URL: {url[:30]}...")
+                        search_results.append({
+                            'title': title,
+                            'description': description,
+                            'url': url
+                        })
+                except Exception as e:
+                    self.log_debug(f"Error processing result: {str(e)}")
+                    continue
             
             self.log_debug(f"Successfully retrieved {len(search_results)} search results for query: {query}")
             return search_results
+            
         except requests.RequestException as e:
             self.log_debug(f"Error performing search: {str(e)}")
             raise  # Re-raise the exception after logging
